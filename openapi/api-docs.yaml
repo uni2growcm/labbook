@@ -7454,6 +7454,26 @@ components:
           type: string
           description: Patient agreement
           default: "N"
+    ResultCreate:
+      type: object
+      required:
+        - id_owner
+        - user_role
+      properties:
+        id_owner:
+          type: integer
+          description: The ID of the user creating the results
+        user_role:
+          type: string
+          description: The role of the user
+        list_ref:
+          type: array
+          items:
+            type: object
+            properties:
+              ref_analyse:
+                type: integer
+                description: Reference to the analysis
   securitySchemes:
     oauth2:
       type: oauth2
