@@ -1220,7 +1220,7 @@ CREATE TABLE `oauth2_client` (
 
 LOCK TABLES `oauth2_client` WRITE;
 /*!40000 ALTER TABLE `oauth2_client` DISABLE KEYS */;
-INSERT INTO `oauth2_client` VALUES (1,'labbook-FE','','LabBook Front-End',0,'/oauth/callback /sigl/oauth/callback','','authorization_code','code','client_secret_post','Y','2026-01-28 17:06:28','2026-01-28 17:06:28'),(2,'labbook-API','','Swagger UI',0,'/static/vendor/swagger-ui/oauth2-redirect.html /sigl/static/vendor/swagger-ui/oauth2-redirect.html','external/analysis external/patient external/record external/result external/user','authorization_code','code','none','Y','2026-01-28 17:06:28','2026-01-28 17:06:28');
+INSERT INTO `oauth2_client` VALUES (1,'labbook-FE','','LabBook Front-End',0,'/oauth/callback /sigl/oauth/callback','','authorization_code','code','client_secret_post','Y','2026-01-28 17:06:28','2026-01-28 17:06:28'),(2,'labbook-API','','Swagger UI',0,'/static/vendor/swagger-ui/oauth2-redirect.html /sigl/static/vendor/swagger-ui/oauth2-redirect.html','external/analysis external/patient external/record external/result external/user','authorization_code','code','none','Y','2026-01-28 17:06:28','2026-01-28 17:06:28'),(3,'OH2-API','d3f0ab40d2bf9a2ec4fa8a01b622a3d8290234be4b5839e9b34f515a9125c45d','Open Hospital API',0,'/oh2/callback /oh2/oauth/callback','','client_credentials','code','client_secret_post','Y','2026-01-28 17:06:28','2026-01-28 17:06:28');
 /*!40000 ALTER TABLE `oauth2_client` ENABLE KEYS */;
 UNLOCK TABLES;
 
