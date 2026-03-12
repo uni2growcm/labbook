@@ -7443,7 +7443,7 @@ components:
           description: Blood group
           default: 0
         pat_blood_rhesus:
-          type: string
+          type: integer
           description: Blood rhesus
           default: 0
         pat_email:
