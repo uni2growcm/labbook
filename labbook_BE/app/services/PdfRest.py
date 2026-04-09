@@ -3,7 +3,7 @@ import logging
 import gettext
 import os
 
-from flask import request
+from flask import request, send_file
 from flask_restful import Resource
 
 from app.models.General import compose_ret
@@ -257,6 +257,42 @@ class PdfReportGrouped(Resource):
             self.log.error(Logs.fileline() + ' : PdfReportGrouped ERROR audit success err=' + str(err))
         return compose_ret(0, Constants.cst_content_type_json)
 
+class PdfReportGroupedDownload(Resource):
+    log = logging.getLogger('log_services')
+
+    @require_oauth()
+    def post(self):
+        audit_user = request.oauth_user
+        args = request.get_json() or {}
+
+        if 'l_id_rec_vld' not in args or 'filename' not in args:
+            self.log.error(Logs.fileline() + ' : PdfReportGroupedDownload ERROR args missing')
+            try:
+                details = {"reason": "ARGS_MISSING", "missing": ["l_id_rec_vld", "filename"]}
+                Audit.insertAudit(audit_user, "PdfReportGroupedDownload", "PDF", None, "ERROR", details, "R")
+            except Exception as err:
+                self.log.error(Logs.fileline() + ' : PdfReportGroupedDownload ERROR audit err=' + str(err))
+            return compose_ret(-1, Constants.cst_content_type_json, 400)
+
+        ret = Pdf.generatePdfReportGrouped(args['filename'], args['l_id_rec_vld'])
+
+        if not ret:
+            self.log.error(Logs.fileline() + ' : PdfReportGroupedDownload failed')
+            try:
+                details = {"reason": "PDF_FAILED", "filename": str(args.get("filename")),
+                           "count": len(args.get("l_id_rec_vld") or [])}
+                Audit.insertAudit(audit_user, "PdfReportGroupedDownload", "PDF", None, "ERROR", details, "R")
+            except Exception as err:
+                self.log.error(Logs.fileline() + ' : PdfReportGroupedDownload ERROR audit err=' + str(err))
+            return compose_ret(-1, Constants.cst_content_type_json, 500)
+
+        self.log.info(Logs.fileline() + ' : TRACE PdfReportGroupedDownload')
+        try:
+            details = {"filename": str(args.get("filename")), "count": len(args.get("l_id_rec_vld") or [])}
+            Audit.insertAudit(audit_user, "PdfReportGroupedDownload", "PDF", None, "SUCCESS", details, "R")
+        except Exception as err:
+            self.log.error(Logs.fileline() + ' : PdfReportGroupedDownload ERROR audit success err=' + str(err))
+        return send_file(ret, as_attachment=True, download_name=args['filename'], mimetype='application/pdf')
 
 class PdfReportGlobal(Resource):
     log = logging.getLogger('log_services')

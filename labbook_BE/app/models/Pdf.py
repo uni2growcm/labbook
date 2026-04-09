@@ -303,9 +303,30 @@ class Pdf:
 
         """
 
+        path = Pdf.generatePdfReportGrouped(filename, l_id_rec)
+
+        return True if path else False
+
+    @staticmethod
+    def generatePdfReportGrouped(filename, l_id_rec):
+        """Build a Grouped PDF Report
+
+        This function is call by biological-validationin group mode
+
+        Args:
+            l_id_rec   (array): list of id of record.
+            filename  (string): filename.
+
+        Returns:
+            string: The generated PDF file path.
+
+        """
+
         path = Constants.cst_path_tmp
 
         l_file_rec = []
+
+        generated_file_path = ""
 
         for id_rec in l_id_rec:
             report = File.getFileReport(id_rec)
@@ -332,13 +353,14 @@ class Pdf:
                 filepath = os.path.join(path, filename)
 
                 pdf.save(filepath)
+                generated_file_path = filepath
             except Exception as err:
                 Pdf.log.error(Logs.fileline() + ' : getPdfReportGrouped failed, err=%s', err)
-                return False
+                return None
         else:
-            return False
+            return None
 
-        return True
+        return generated_file_path
 
     @staticmethod
     def getPdfReportGlobal(filename, exclu, date_beg, date_end):
