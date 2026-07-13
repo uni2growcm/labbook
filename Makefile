@@ -138,9 +138,13 @@ httpdconf:
 .PHONY: build
 build: httpdconf
 ifdef BUILD_VERSION
+	@if ! git rev-parse --verify refs/tags/$(TAG_NAME) >/dev/null 2>&1; then \
+		echo "Tag $(TAG_NAME) does not exist, creating from develop..."; \
+		git tag $(TAG_NAME) develop; \
+	fi
 	git checkout $(TAG_NAME)
 	$(DOCKER_COMMAND) build . -t $(FULL_IMAGE_NAME):$(BUILD_VERSION)
-	git checkout master
+	git checkout develop
 else
 	@echo 'missing version'
 endif

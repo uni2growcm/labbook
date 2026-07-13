@@ -7328,7 +7328,7 @@ paths:
                 items:
                   type: object
         500:
-          descr iption: Internal server error
+          description: Internal server error
           content:
             application/json:
               schema:
