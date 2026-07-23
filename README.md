@@ -155,6 +155,13 @@ For developers:
 
 The commands in the first group are used to build an image in order to release a LabBook version.
 
+> **Note:** By default `make dbinit` loads the French demo data from `etc/sql/demo_dump.sql`.  
+> To use English demo data instead, change the `SQLDUMP_FILENAME` variable in the `Makefile` (line 7):
+> ```makefile
+> SQLDUMP_FILENAME=etc/sql/demo_dump_en.sql
+> ```
+> Or override it at runtime: `make dbinit SQLDUMP_FILENAME=etc/sql/demo_dump_en.sql`
+
 The second group of commands provides a few shortcuts when working on LabBook development.
 The more useful are:
 
