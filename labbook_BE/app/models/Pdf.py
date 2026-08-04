@@ -3279,14 +3279,14 @@ class Pdf:
 
         # === ANALYZES details ===
         data['l_data'] = []
-        analysis       = {"ana_name": "", "ana_code": "", "ana_loinc": "", "ana_outsourced": "", "ana_price": '0.00'}
+        analysis       = {"ana_name": "", "ana_code": "", "ana_loinc": "", "ana_outsourced": "", "ana_price": '0.00', "ana_var": ""}
 
         if id_rec > 0:
             # GET all analysis for a record
             list_ana = Analysis.getAnalysisInvoice(id_rec, 'Y')
 
             for ana in list_ana:
-                tmp_ana = {"ana_name": "", "ana_code": "", "ana_loinc": "", "ana_outsourced": "", "ana_price": '0.00'}
+                tmp_ana = {"ana_name": "", "ana_code": "", "ana_loinc": "", "ana_outsourced": "", "ana_price": '0.00', "ana_var": ""}
 
                 # ==== ANALYSIS NAME ====
                 if ana['ana_name']:
@@ -3318,6 +3318,9 @@ class Pdf:
                 else:
                     tmp_ana['ana_price'] = '0.00'
 
+                if ana['ana_var']:
+                    tmp_ana['ana_var'] = ana['ana_var']
+                
                 data['l_data'].append(tmp_ana)
 
         # For print test analysis
@@ -3329,6 +3332,7 @@ class Pdf:
             analysis['ana_loinc'] = "93923-1"
             analysis['ana_outsourced'] = _("Sous-traitée")
             analysis['ana_price'] = "3500.00"
+            analysis['ana_var'] = _("Variable 1") + "\n" + _("Variable 2") + "\n" + _("Variable 3")
 
             data['l_data'].append(analysis)
 
