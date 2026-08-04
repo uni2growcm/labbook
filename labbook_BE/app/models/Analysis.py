@@ -301,29 +301,18 @@ class Analysis:
 
         req = ('select req_ana.id_data as id_data, req_ana.id_dos as id_rec, '
                'req_ana.prix as ana_price, req_ana.req_outsourced as outsourced, '
-               'req_ana.ref_analyse as ref_analyse, '
+               'GROUP_CONCAT(DISTINCT var.libelle SEPARATOR ", ") as ana_var, '
                'ref_ana.code as ana_code, ref_ana.nom as ana_name, ref_ana.ana_loinc as ana_loinc, '
                'ifnull(ref_ana.type_prel, 0) as type_samp, '
                'ifnull(ref_ana.produit_biologique, 0) as id_samp_act '
                'from sigl_04_data as req_ana '
                'left join sigl_05_data as ref_ana on ref_ana.id_data=ref_analyse '
-               'where req_ana.id_dos=%s' + cond)
+               'left join sigl_05_07_data as link on link.id_refanalyse=ref_ana.id_data '
+               'left join sigl_07_data as var on var.id_data=link.id_refvariable '
+               'where req_ana.id_dos=%s GROUP BY req_ana.id_data, req_ana.id_dos, req_ana.prix, req_ana.req_outsourced,'
+               ' ref_ana.code, ref_ana.nom, ref_ana.ana_loinc, ref_ana.type_prel, ref_ana.produit_biologique' + cond)
 
         cursor.execute(req, (id_rec,))
-
-        return cursor.fetchall()
-
-    @staticmethod
-    def getAnalysisVarForInvoice(ref_analyse):
-        cursor = DB.cursor()
-
-        req = ('select var.libelle as var_name, var.code_var as var_code '
-               'from sigl_05_07_data as link '
-               'inner join sigl_07_data as var on var.id_data = link.id_refvariable '
-               'where link.id_refanalyse=%s '
-               'order by link.position asc')
-
-        cursor.execute(req, (ref_analyse,))
 
         return cursor.fetchall()
 
