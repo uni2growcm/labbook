@@ -1878,6 +1878,86 @@ def setting_analyzes():
     return render_template('setting-analyzes.html', ihm=json_ihm, args=json_data, rand=random.randint(0, 999))  # nosec B311
 
 
+# Page : bluepearl mapping list
+@app.route('/list-bluepearl-mapping')
+def list_bluepearl_mapping():
+    log.info(Logs.fileline() + ' : TRACE setting bluepearl mapping')
+
+    if not test_session():
+        log.info(Logs.fileline() + ' : TRACE Labbook setting bluepearl mapping => disconnect')
+        session.clear()
+        return index()
+
+    session['current_page'] = 'list-bluepearl-mapping'
+    session.modified = True
+
+    resp = ensure_be_token()
+    if resp:
+        return resp
+    headers = be_auth_headers()
+
+    json_ihm  = {}
+    json_data = {}
+
+    try:
+        url = session['server_int'] + '/' + session['redirect_name'] + '/services/external/bluepearl/mapping'
+        req = requests.get(url, timeout=10, headers=headers)
+
+        redir = be_check_or_bounce(req)
+        if redir:
+            return redir
+
+        if req.status_code == 200:
+            json_data = req.json()
+
+    except requests.exceptions.RequestException as err:
+        log.error(Logs.fileline() + ' : requests bluepearl mapping list failed, err=%s , url=%s', err, url)
+
+    return render_template('list-bluepearl-mapping.html', ihm=json_ihm, args=json_data, rand=random.randint(0, 999))  # nosec B311
+
+
+# Page : details bluepearl mapping
+@app.route('/det-bluepearl-mapping')
+@app.route('/det-bluepearl-mapping/<int:mapping_id>')
+def det_bluepearl_mapping(mapping_id=0):
+    log.info(Logs.fileline() + ' : TRACE setting det bluepearl mapping=' + str(mapping_id))
+
+    if not test_session():
+        log.info(Logs.fileline() + ' : TRACE Labbook det bluepearl mapping => disconnect')
+        session.clear()
+        return index()
+
+    session['current_page'] = 'det-bluepearl-mapping/' + str(mapping_id)
+    session.modified = True
+
+    resp = ensure_be_token()
+    if resp:
+        return resp
+    headers = be_auth_headers()
+
+    json_ihm  = {}
+    json_data = {}
+
+    json_data['mapping'] = []
+
+    if mapping_id > 0:
+        try:
+            url = session['server_int'] + '/' + session['redirect_name'] + '/services/external/bluepearl/mapping/' + str(mapping_id)
+            req = requests.get(url, timeout=10, headers=headers)
+
+            redir = be_check_or_bounce(req)
+            if redir:
+                return redir
+
+            if req.status_code == 200:
+                json_data['mapping'] = req.json()
+
+        except requests.exceptions.RequestException as err:
+            log.error(Logs.fileline() + ' : requests bluepearl mapping details failed, err=%s , url=%s', err, url)
+
+    return render_template('det-bluepearl-mapping.html', ihm=json_ihm, args=json_data, rand=random.randint(0, 999))  # nosec B311
+
+
 # Page : analyzers list
 @app.route('/list-analyzers')
 def list_analyzers():

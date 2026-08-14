@@ -45,6 +45,7 @@ from app.services.ReportRest import *
 from app.services.ResultRest import *
 from app.services.SettingRest import *
 from app.services.LiteRest import *
+from app.services.BluePearlRest import *
 
 LANGUAGES = {
     'fr_FR': 'French',
@@ -192,6 +193,10 @@ def index():
 # ######################################
 
 api.add_resource(Test,                  '/services/test')
+api.add_resource(BluePearlOrdersApi,    '/services/external/bluepearl/orders')
+api.add_resource(BluePearlAckApi,       '/services/external/bluepearl/orders/ack')
+api.add_resource(BluePearlResultsApi,   '/services/external/bluepearl/results')
+api.add_resource(BluePearlMappingApi,   '/services/external/bluepearl/mapping', '/services/external/bluepearl/mapping/<int:bpm_ser>')
 api.add_resource(AnalysisCode,          '/services/analysis/code/check/<string:code>')
 api.add_resource(AnalysisCodeFromExt,   '/services/external/analysis/code/check/<string:code>')
 api.add_resource(AnalysisDet,           '/services/analysis/det/<int:id_ana>')
