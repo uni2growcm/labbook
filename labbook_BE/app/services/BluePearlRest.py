@@ -18,6 +18,7 @@ from flask_restful import Resource
 from app.models.Constants import Constants
 from app.models.Logs import Logs
 from app.models.Audit import Audit
+from app.models.DB import DB
 from app.models.BluePearl import BluePearl
 from app.models.General import compose_ret
 from app.security.oauth_routes import require_oauth

@@ -116,7 +116,7 @@ class BluePearl:
             cursor = DB.cursor()
 
             cursor.execute(
-                'UPDATE bluepearl_map SET bpm_active="N" WHERE bpm_ser=%s',
+                'DELETE FROM bluepearl_map WHERE bpm_ser=%s',
                 (bpm_ser,))
 
             BluePearl.log.info(Logs.fileline() + ' : deleteMapping OK bpm_ser=' + str(bpm_ser))
@@ -173,7 +173,7 @@ class BluePearl:
             INNER JOIN sigl_05_07_data AS link ON link.id_refanalyse = ana.id_data
             INNER JOIN sigl_07_data AS var ON var.id_data = link.id_refvariable
             LEFT JOIN sigl_dico_data AS d1 ON d1.id_data = samp.type_prel
-            LEFT JOIN bluepearl_ack AS ack ON ack.bpa_barcode = samp.code
+            LEFT JOIN bluepearl_ack AS ack ON ack.bpa_barcode COLLATE utf8_general_ci = samp.code COLLATE utf8_general_ci
             WHERE rec.statut IN (182, 253)
               AND samp.code IS NOT NULL AND samp.code != ''
               AND ana.actif = 4

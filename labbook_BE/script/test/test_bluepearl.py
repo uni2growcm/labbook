@@ -25,8 +25,8 @@ class BluePearlAPITestCase(unittest.TestCase):
         # Generate Basic Auth token equivalent to OAuth2 client credentials
         # (Though we use client_secret_post in our implementation)
         # Note: Depending on AuthLib setup, we might need a real token.
-        self.client_id = 'bluepearl-client'
-        self.client_secret = 'bp_s3cr3t_k3y_2026_ch4ng3_m3_1n_pr0duct10n'
+        self.client_id = 'BPHT-API'
+        self.client_secret = 'a3f0ab40d2bf9a2ec4fa8a01b622a3d8290234be4b5839e9b34f515a9125c45a'
         
         # Get an access token
         response = self.app.post('/services/oauth/token', data={
@@ -56,6 +56,10 @@ class BluePearlAPITestCase(unittest.TestCase):
         response = self.app.get('/services/external/bluepearl/orders', headers=self.headers)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
+        
+        print("\n--- Data GET /orders ---")
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+        print("------------------------\n")
         
         self.assertEqual(data.get('statusCode'), "0")
         self.assertIn('_lstMInterPatientDetails', data.get('data', {}))
