@@ -84,7 +84,7 @@ def upgrade():
          `oacl_token_endpoint_auth_method`, `oacl_is_active`)
         VALUES
         ('BPHT-API',
-         'a3f0ab40d2bf9a2ec4fa8a01b622a3d8290234be4b5839e9b34f515a9125c45a,
+         'a3f0ab40d2bf9a2ec4fa8a01b622a3d8290234be4b5839e9b34f515a9125c45a',
          'Blue Pearl BPHT / eLab Machine Connect',
          0,
          '',
