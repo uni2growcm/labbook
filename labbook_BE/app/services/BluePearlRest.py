@@ -11,8 +11,11 @@ Authentication is handled via OAuth2 (Client Credentials or Authorization Code)
 using the @require_oauth decorator.
 """
 
+import csv
+import io
 import logging
-from flask import request
+from datetime import datetime
+from flask import request, Response
 from flask_restful import Resource
 
 from app.models.Constants import Constants
@@ -328,3 +331,63 @@ class BluePearlMappingApi(Resource):
         except Exception as err:
             self.log.error(Logs.fileline() + f' : BluePearlMappingApi DELETE ERROR: {err}')
             return compose_ret({"error": str(err)}, Constants.cst_content_type_json, 500)
+
+
+class BluePearlExportApi(Resource):
+    log = logging.getLogger('log_services')
+
+    @require_oauth('external/bluepearl')
+    def get(self):
+        """
+        Export LabBook tests and parameters nomenclature for Blue Pearl team
+        in the standard 6-column format (Section 1.3):
+          - MACHINE NAME
+          - TEST NAME
+          - TEST PARAMETER NAME
+          - TEST ID
+          - PARAMETER ID
+          - MACHINE CODE / HOST CODE
+        """
+        audit_user = request.oauth_user
+        machinename = request.args.get('machinename', '')
+        export_format = request.args.get('format', 'csv').lower()
+
+        try:
+            nomenclature = BluePearl.exportNomenclature(machinename)
+
+            details = {"result": "SUCCESS", "action": "EXPORT_NOMENCLATURE", "count": len(nomenclature)}
+            Audit.insertAudit(audit_user, "BluePearlExport", "EXTERNAL_API", 0, "SUCCESS", details, "R")
+
+            if export_format == 'json':
+                return compose_ret({
+                    "statusCode": "0",
+                    "statusMessage": "Success",
+                    "count": len(nomenclature),
+                    "data": nomenclature
+                }, Constants.cst_content_type_json, 200)
+
+            # Default: CSV export
+            output = io.StringIO()
+            writer = csv.writer(output, delimiter=';')
+            writer.writerow(["MACHINE NAME", "TEST NAME", "TEST PARAMETER NAME", "TEST ID", "PARAMETER ID", "MACHINE CODE / HOST CODE"])
+            for row in nomenclature:
+                writer.writerow([
+                    row["MACHINE NAME"],
+                    row["TEST NAME"],
+                    row["TEST PARAMETER NAME"],
+                    row["TEST ID"],
+                    row["PARAMETER ID"],
+                    row["MACHINE CODE / HOST CODE"]
+                ])
+
+            csv_data = output.getvalue()
+            today = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"bluepearl_nomenclature_{today}.csv"
+
+            response = Response(csv_data, mimetype='text/csv; charset=utf-8')
+            response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+            return response
+
+        except Exception as err:
+            self.log.error(Logs.fileline() + f' : BluePearlExportApi GET ERROR: {err}')
+            return compose_ret({"statusCode": "1", "statusMessage": str(err)}, Constants.cst_content_type_json, 500)

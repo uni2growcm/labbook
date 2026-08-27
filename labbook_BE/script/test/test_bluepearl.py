@@ -96,5 +96,65 @@ class BluePearlAPITestCase(unittest.TestCase):
                                 json=payload)
         self.assertEqual(response.status_code, 200)
 
+    def test_05_export_nomenclature_json(self):
+        """Test GET /export/nomenclature?format=json API."""
+        if not self.token:
+            self.skipTest("No auth token")
+
+        response = self.app.get('/services/external/bluepearl/export/nomenclature?format=json&machinename=TEST_ANALYZER',
+                                headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data.get('statusCode'), "0")
+        self.assertIn('data', data)
+
+    def test_06_export_nomenclature_csv(self):
+        """Test GET /export/nomenclature API returning CSV file."""
+        if not self.token:
+            self.skipTest("No auth token")
+
+        response = self.app.get('/services/external/bluepearl/export/nomenclature?machinename=Cobas_e411',
+                                headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('text/csv', response.content_type)
+        csv_text = response.data.decode('utf-8')
+        self.assertIn('MACHINE NAME', csv_text)
+        self.assertIn('TEST ID', csv_text)
+        self.assertIn('PARAMETER ID', csv_text)
+
+    def test_07_post_results_multivariable(self):
+        """Test POST /results API with multi-variable results payload."""
+        if not self.token:
+            self.skipTest("No auth token")
+
+        payload = {
+            "Data": {
+                "_listsampleResult": [
+                    {
+                        "patientId": 1,
+                        "barcode": "NON_EXISTENT_SAMPLE_TEST_1",
+                        "testId": 1,
+                        "ParameterId": 1,
+                        "Result": "7.5",
+                        "machinename": "BC-5000"
+                    },
+                    {
+                        "patientId": 1,
+                        "barcode": "NON_EXISTENT_SAMPLE_TEST_1",
+                        "testId": 1,
+                        "ParameterId": 2,
+                        "Result": "14.2",
+                        "machinename": "BC-5000"
+                    }
+                ]
+            }
+        }
+
+        response = self.app.post('/services/external/bluepearl/results',
+                                headers=self.headers,
+                                json=payload)
+        self.assertIn(response.status_code, [200, 400])
+
+
 if __name__ == '__main__':
     unittest.main()

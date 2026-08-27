@@ -5,13 +5,13 @@ BluePearl – Business logic for BPHT / eLab Machine Connect integration.
 This module handles:
   - Extraction of pending analysis orders for BPHT polling (GET /orders)
   - Acknowledgment tracking (POST /orders/ack)
-  - Result injection from automate (POST /results)
-  - Mapping between BPHT testId/ParameterId and LabBook analysis/variable
+  - Result injection from automate (POST /results) with strict idempotence
+  - Standard nomenclature export (Section 1.3 of technical specification)
+  - Mapping management (backward compatible)
 """
 
 import logging
 import mysql.connector
-
 from datetime import datetime
 
 from app.models.Constants import Constants
@@ -24,7 +24,7 @@ class BluePearl:
     log = logging.getLogger('log_db')
 
     # ------------------------------------------------------------------
-    #  MAPPING helpers
+    #  MAPPING helpers (Backward compatibility)
     # ------------------------------------------------------------------
 
     @staticmethod
@@ -50,6 +50,21 @@ class BluePearl:
         return cursor.fetchone()
 
     @staticmethod
+    def getMappingById(bpm_ser):
+        """Return a single mapping by its PK bpm_ser with joined analysis & variable names."""
+        cursor = DB.cursor()
+
+        req = ('SELECT bpm.*, ana.nom AS ana_name, var.libelle AS var_name '
+               'FROM bluepearl_map bpm '
+               'LEFT JOIN sigl_05_data ana ON ana.id_data = bpm.bpm_ana_id '
+               'LEFT JOIN sigl_07_data var ON var.id_data = bpm.bpm_var_id '
+               'WHERE bpm.bpm_ser = %s LIMIT 1')
+
+        cursor.execute(req, (bpm_ser,))
+
+        return cursor.fetchone()
+
+    @staticmethod
     def getMappingList():
         """Return all active mappings."""
         cursor = DB.cursor()
@@ -71,12 +86,17 @@ class BluePearl:
         try:
             cursor = DB.cursor()
 
+            if 'active' not in params and 'bpm_active' not in params:
+                params['active'] = 'Y'
+            elif 'bpm_active' in params:
+                params['active'] = params['bpm_active']
+
             cursor.execute(
                 'INSERT INTO bluepearl_map '
                 '(bpm_machinename, bpm_test_id, bpm_test_name, bpm_param_id, bpm_param_name, '
-                ' bpm_ana_id, bpm_var_id, bpm_ana_code, bpm_var_code) '
+                ' bpm_ana_id, bpm_var_id, bpm_ana_code, bpm_var_code, bpm_active) '
                 'VALUES (%(machinename)s, %(test_id)s, %(test_name)s, %(param_id)s, %(param_name)s, '
-                '%(ana_id)s, %(var_id)s, %(ana_code)s, %(var_code)s)',
+                '%(ana_id)s, %(var_id)s, %(ana_code)s, %(var_code)s, %(active)s)',
                 params)
 
             BluePearl.log.info(Logs.fileline() + ' : insertMapping OK')
@@ -93,12 +113,18 @@ class BluePearl:
             cursor = DB.cursor()
 
             params['bpm_ser'] = bpm_ser
+            if 'active' not in params and 'bpm_active' not in params:
+                params['active'] = 'Y'
+            elif 'bpm_active' in params:
+                params['active'] = params['bpm_active']
+
             cursor.execute(
                 'UPDATE bluepearl_map SET '
                 'bpm_machinename=%(machinename)s, bpm_test_id=%(test_id)s, bpm_test_name=%(test_name)s, '
                 'bpm_param_id=%(param_id)s, bpm_param_name=%(param_name)s, '
                 'bpm_ana_id=%(ana_id)s, bpm_var_id=%(var_id)s, '
-                'bpm_ana_code=%(ana_code)s, bpm_var_code=%(var_code)s '
+                'bpm_ana_code=%(ana_code)s, bpm_var_code=%(var_code)s, '
+                'bpm_active=%(active)s '
                 'WHERE bpm_ser=%(bpm_ser)s',
                 params)
 
@@ -111,7 +137,7 @@ class BluePearl:
 
     @staticmethod
     def deleteMapping(bpm_ser):
-        """Soft-delete a mapping row (set bpm_active = 'N')."""
+        """Delete a mapping row."""
         try:
             cursor = DB.cursor()
 
@@ -127,7 +153,7 @@ class BluePearl:
             return False
 
     # ------------------------------------------------------------------
-    #  ORDERS – Pending orders for BPHT to pull (GET)
+    #  ORDERS – Pending orders for BPHT to pull (GET /orders)
     # ------------------------------------------------------------------
 
     @staticmethod
@@ -199,26 +225,19 @@ class BluePearl:
           }
         }
 
-        For each row, look up the BPHT testId/ParameterId via bluepearl_map.
-        If no mapping exists, use LabBook IDs as fallback.
+        Direct LabBook IDs (as per technical clarification doc section 1.1 & 2.1):
+        - testId: ana_id (ID analyse LabBook)
+        - testname: ana_name (Nom analyse LabBook)
+        - ParameterId: var_id (ID variable LabBook)
+        - Parametername: var_name (Nom variable LabBook)
         """
         details = []
 
         for row in rows:
-            # Try to find the BPHT mapping for this analysis variable
-            mapping = BluePearl.getMappingByLabBook(row['ana_id'], row['var_id'])
-
-            if mapping:
-                test_id = mapping['bpm_test_id']
-                test_name = mapping['bpm_test_name'] or row['ana_name']
-                param_id = mapping['bpm_param_id']
-                param_name = mapping['bpm_param_name'] or row['var_name']
-            else:
-                # Fallback: use LabBook IDs directly
-                test_id = row['ana_id']
-                test_name = row['ana_name']
-                param_id = row['var_id']
-                param_name = row['var_name']
+            test_id = row['ana_id']
+            test_name = row['ana_name']
+            param_id = row['var_id']
+            param_name = row['var_name']
 
             dob_str = ''
             if row['dob']:
@@ -260,17 +279,6 @@ class BluePearl:
         }
 
     @staticmethod
-    def getMappingByLabBook(ana_id, var_id):
-        """Reverse lookup: find BPHT mapping from LabBook ana_id + var_id."""
-        cursor = DB.cursor()
-
-        req = ('SELECT * FROM bluepearl_map '
-               'WHERE bpm_ana_id=%s AND bpm_var_id=%s AND bpm_active="Y" LIMIT 1')
-        cursor.execute(req, (ana_id, var_id))
-
-        return cursor.fetchone()
-
-    @staticmethod
     def _markAsSent(barcode, id_samp):
         """
         Insert or update bluepearl_ack to record that an order has been
@@ -291,7 +299,7 @@ class BluePearl:
             return False
 
     # ------------------------------------------------------------------
-    #  ACKNOWLEDGMENT – BPHT confirms it received the orders (POST)
+    #  ACKNOWLEDGMENT – BPHT confirms it received the orders (POST /orders/ack)
     # ------------------------------------------------------------------
 
     @staticmethod
@@ -334,25 +342,22 @@ class BluePearl:
         return {'acknowledged': acknowledged, 'not_found': not_found}
 
     # ------------------------------------------------------------------
-    #  RESULTS – BPHT pushes automate results (POST)
+    #  RESULTS – BPHT pushes automate results (POST /results)
     # ------------------------------------------------------------------
 
     @staticmethod
     def insertBPHTResults(results_list):
         """
         Process the results sent by BPHT and store them in LabBook.
-
-        For each result in results_list:
-          1. Resolve barcode → sigl_01_data.id_data (sample)
-          2. Resolve testId/ParameterId → LabBook analysis/variable via bluepearl_map
-          3. Find the corresponding sigl_09_data row (result record)
-          4. Update the result value
+        Correctly iterates over ALL analysis variables and updates each corresponding
+        row in sigl_09_data.
 
         Returns dict with 'stored', 'errors', 'warnings' lists.
         """
         stored = []
         errors = []
         warnings = []
+        updated_records = set()
 
         for result in results_list:
             barcode = result.get('barcode', '')
@@ -378,62 +383,59 @@ class BluePearl:
 
             id_samp = sample['id_data']
             id_rec = sample['id_dos']
-            ref_analyse = sample['samp_id_ana']
+            ref_analyse_sample = sample['samp_id_ana']
 
-            # Step 2: Resolve testId/ParameterId → LabBook variable via mapping
-            mapping = BluePearl.getMapping(test_id, param_id, machinename)
-
-            if not mapping:
-                # Try without machinename
-                mapping = BluePearl.getMapping(test_id, param_id)
-
-            if not mapping:
-                errors.append({
-                    'barcode': barcode,
-                    'testId': test_id,
-                    'ParameterId': param_id,
-                    'error': 'No mapping found for testId/ParameterId'
-                })
-                continue
-
-            lb_var_id = mapping['bpm_var_id']
-
-            # Step 3: Find the sigl_09_data row for this analysis request + variable
-            result_row = BluePearl._findResultRow(id_rec, ref_analyse, lb_var_id)
-
-            if not result_row:
-                # Try broader search across all analyses on this record
-                result_row = BluePearl._findResultRowBroad(id_rec, mapping['bpm_ana_id'], lb_var_id)
+            # Step 2: Find the EXACT sigl_09_data row for this record + analysis + variable
+            result_row = BluePearl._findResultRowForParam(id_rec, ref_analyse_sample, test_id, param_id)
 
             if not result_row:
                 errors.append({
                     'barcode': barcode,
                     'testId': test_id,
                     'ParameterId': param_id,
-                    'error': 'No result row found in LabBook for this analysis/variable'
+                    'error': f'No result row found in LabBook for analysis {test_id} / parameter {param_id}'
                 })
                 continue
 
-            id_res = result_row['id_data']
+            id_res = result_row['id_res']
+            current_value = result_row.get('current_valeur', '')
+            ana_code = result_row.get('ana_code', '')
+            var_code = result_row.get('var_code', '')
+            var_name = result_row.get('var_name', '')
 
-            # Step 4: Update the result value
-            ok = BluePearl._updateResultValue(id_res, value)
-
-            if ok:
+            # Step 3: Idempotent update
+            # If already set with identical value (retry loop from Blue Pearl), confirm success
+            if current_value is not None and str(current_value).strip() == str(value).strip():
                 stored.append({
                     'barcode': barcode,
                     'testId': test_id,
                     'ParameterId': param_id,
                     'id_res': id_res,
+                    'var_name': var_name,
+                    'value': value,
+                    'status': 'already_recorded'
+                })
+                continue
+
+            ok = BluePearl._updateResultValue(id_res, value)
+
+            if ok:
+                updated_records.add(id_rec)
+                stored.append({
+                    'barcode': barcode,
+                    'testId': test_id,
+                    'ParameterId': param_id,
+                    'id_res': id_res,
+                    'var_name': var_name,
                     'value': value
                 })
 
-                # Also store in analyzer_result for traceability
+                # Store trace in analyzer_result for audit
                 BluePearl._insertAnalyzerResult(
                     machinename=machinename,
                     barcode=barcode,
-                    ana_code=mapping.get('bpm_ana_code', ''),
-                    var_code=mapping.get('bpm_var_code', ''),
+                    ana_code=ana_code,
+                    var_code=var_code,
                     id_samp=id_samp,
                     value=value
                 )
@@ -445,6 +447,14 @@ class BluePearl:
                     'id_res': id_res,
                     'error': 'Failed to update result value'
                 })
+
+        # Touch rec_modified on all updated records
+        for rec_id in updated_records:
+            try:
+                cursor = DB.cursor()
+                cursor.execute('UPDATE sigl_02_data SET rec_modified = NOW() WHERE id_data = %s', (rec_id,))
+            except Exception as e:
+                BluePearl.log.error(Logs.fileline() + f' : ERROR updating rec_modified: {e}')
 
         return {'stored': stored, 'errors': errors, 'warnings': warnings}
 
@@ -462,39 +472,99 @@ class BluePearl:
         return cursor.fetchone()
 
     @staticmethod
-    def _findResultRow(id_rec, ref_analyse, var_id):
+    def _findResultRowForParam(id_rec, ref_analyse_sample, test_id, param_id):
         """
-        Find the sigl_09_data row for a specific analysis request and variable
-        within a given record.
-        """
-        cursor = DB.cursor()
-
-        req = ('SELECT res.id_data, res.valeur '
-               'FROM sigl_09_data AS res '
-               'INNER JOIN sigl_04_data AS req ON req.id_data = res.id_analyse '
-               'WHERE req.id_dos = %s AND req.ref_analyse = %s AND res.ref_variable = %s '
-               'LIMIT 1')
-
-        cursor.execute(req, (id_rec, ref_analyse, var_id))
-
-        return cursor.fetchone()
-
-    @staticmethod
-    def _findResultRowBroad(id_rec, ana_id, var_id):
-        """
-        Broader search: find sigl_09_data row for any request on this record
-        that references the given analysis and variable.
+        Find the exact sigl_09_data row for a given record and parameter.
+        Ensures each variable of a multi-variable analysis (e.g. NFS/CBC, Ionogramme)
+        is matched to its own unique row in sigl_09_data without collisions.
         """
         cursor = DB.cursor()
 
-        req = ('SELECT res.id_data, res.valeur '
-               'FROM sigl_09_data AS res '
-               'INNER JOIN sigl_04_data AS req ON req.id_data = res.id_analyse '
-               'WHERE req.id_dos = %s AND req.ref_analyse = %s AND res.ref_variable = %s '
-               'LIMIT 1')
+        # Parse test_id
+        test_id_int = None
+        test_id_str = None
+        if isinstance(test_id, int):
+            test_id_int = test_id
+            test_id_str = str(test_id)
+        elif isinstance(test_id, str) and test_id:
+            test_id_str = test_id
+            if test_id.isdigit():
+                test_id_int = int(test_id)
 
-        cursor.execute(req, (id_rec, ana_id, var_id))
+        # Parse param_id
+        param_id_int = None
+        param_id_str = None
+        if isinstance(param_id, int):
+            param_id_int = param_id
+            param_id_str = str(param_id)
+        elif isinstance(param_id, str) and param_id:
+            param_id_str = param_id
+            if param_id.isdigit():
+                param_id_int = int(param_id)
 
+        # 1. Primary precise search matching record + analysis + specific variable
+        req = ("""
+            SELECT
+                res.id_data       AS id_res,
+                res.valeur        AS current_valeur,
+                res.ref_variable  AS var_id,
+                req.ref_analyse   AS ana_id,
+                ana.code          AS ana_code,
+                var.code_var      AS var_code,
+                var.libelle       AS var_name
+            FROM sigl_09_data AS res
+            INNER JOIN sigl_04_data AS req ON req.id_data = res.id_analyse
+            INNER JOIN sigl_05_data AS ana ON ana.id_data = req.ref_analyse
+            INNER JOIN sigl_07_data AS var ON var.id_data = res.ref_variable
+            LEFT JOIN sigl_05_07_data AS link ON link.id_refanalyse = ana.id_data AND link.id_refvariable = var.id_data
+            WHERE req.id_dos = %s
+              AND (
+                ana.id_data = %s
+                OR (ana.code IS NOT NULL AND ana.code = %s)
+                OR req.ref_analyse = %s
+              )
+              AND (
+                var.id_data = %s
+                OR (var.code_var IS NOT NULL AND var.code_var = %s)
+                OR link.position = %s
+                OR link.num_var = %s
+              )
+            LIMIT 1
+        """)
+
+        cursor.execute(req, (
+            id_rec,
+            test_id_int, test_id_str, ref_analyse_sample,
+            param_id_int, param_id_str, param_id_int, param_id_int
+        ))
+
+        row = cursor.fetchone()
+        if row:
+            return row
+
+        # 2. Fallback: Search on record solely by variable matching
+        req_fallback = ("""
+            SELECT
+                res.id_data       AS id_res,
+                res.valeur        AS current_valeur,
+                res.ref_variable  AS var_id,
+                req.ref_analyse   AS ana_id,
+                ana.code          AS ana_code,
+                var.code_var      AS var_code,
+                var.libelle       AS var_name
+            FROM sigl_09_data AS res
+            INNER JOIN sigl_04_data AS req ON req.id_data = res.id_analyse
+            INNER JOIN sigl_05_data AS ana ON ana.id_data = req.ref_analyse
+            INNER JOIN sigl_07_data AS var ON var.id_data = res.ref_variable
+            WHERE req.id_dos = %s
+              AND (
+                var.id_data = %s
+                OR (var.code_var IS NOT NULL AND var.code_var = %s)
+              )
+            LIMIT 1
+        """)
+
+        cursor.execute(req_fallback, (id_rec, param_id_int, param_id_str))
         return cursor.fetchone()
 
     @staticmethod
@@ -514,6 +584,50 @@ class BluePearl:
         except mysql.connector.Error as e:
             BluePearl.log.error(Logs.fileline() + ' : ERROR _updateResultValue SQL = ' + str(e))
             return False
+
+    @staticmethod
+    def exportNomenclature(machinename=''):
+        """
+        Extract the standard nomenclature matrix as requested in Section 1.3:
+          - MACHINE NAME (Header or machine identifier)
+          - TEST NAME (LabBook analysis group name)
+          - TEST PARAMETER NAME (LabBook variable/parameter name)
+          - TEST ID (LabBook test numeric ID or code)
+          - PARAMETER ID (LabBook parameter numeric ID or code)
+          - MACHINE CODE / HOST CODE (Blank, to be configured by Blue Pearl)
+        """
+        cursor = DB.cursor()
+
+        req = ("""
+            SELECT
+                ana.id_data    AS test_id,
+                ana.code       AS ana_code,
+                ana.nom        AS test_name,
+                var.id_data    AS parameter_id,
+                var.code_var   AS var_code,
+                var.libelle    AS test_parameter_name
+            FROM sigl_05_data AS ana
+            INNER JOIN sigl_05_07_data AS link ON link.id_refanalyse = ana.id_data
+            INNER JOIN sigl_07_data AS var ON var.id_data = link.id_refvariable
+            WHERE ana.actif = 4 AND var.actif = 4
+            ORDER BY ana.nom ASC, link.position ASC
+        """)
+
+        cursor.execute(req)
+        rows = cursor.fetchall()
+
+        nomenclature = []
+        for r in rows:
+            nomenclature.append({
+                "MACHINE NAME": machinename,
+                "TEST NAME": r['test_name'] or '',
+                "TEST PARAMETER NAME": r['test_parameter_name'] or '',
+                "TEST ID": r['test_id'],
+                "PARAMETER ID": r['parameter_id'],
+                "MACHINE CODE / HOST CODE": ""
+            })
+
+        return nomenclature
 
     @staticmethod
     def _insertAnalyzerResult(machinename, barcode, ana_code, var_code, id_samp, value):
