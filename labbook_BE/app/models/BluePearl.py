@@ -609,7 +609,7 @@ class BluePearl:
             FROM sigl_05_data AS ana
             INNER JOIN sigl_05_07_data AS link ON link.id_refanalyse = ana.id_data
             INNER JOIN sigl_07_data AS var ON var.id_data = link.id_refvariable
-            WHERE ana.actif = 4 AND var.actif = 4
+            WHERE ana.actif = 4
             ORDER BY ana.nom ASC, link.position ASC
         """)
 

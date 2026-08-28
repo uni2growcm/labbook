@@ -366,8 +366,9 @@ class BluePearlExportApi(Resource):
                     "data": nomenclature
                 }, Constants.cst_content_type_json, 200)
 
-            # Default: CSV export
+            # Default: CSV export (with UTF-8 BOM for seamless Excel opening)
             output = io.StringIO()
+            output.write('\ufeff')
             writer = csv.writer(output, delimiter=';')
             writer.writerow(["MACHINE NAME", "TEST NAME", "TEST PARAMETER NAME", "TEST ID", "PARAMETER ID", "MACHINE CODE / HOST CODE"])
             for row in nomenclature:
@@ -385,7 +386,8 @@ class BluePearlExportApi(Resource):
             filename = f"bluepearl_nomenclature_{today}.csv"
 
             response = Response(csv_data, mimetype='text/csv; charset=utf-8')
-            response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+            response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+            response.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
             return response
 
         except Exception as err:
