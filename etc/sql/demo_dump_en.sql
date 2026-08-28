@@ -1214,9 +1214,79 @@ CREATE TABLE `oauth2_client` (
 
 LOCK TABLES `oauth2_client` WRITE;
 /*!40000 ALTER TABLE `oauth2_client` DISABLE KEYS */;
-INSERT INTO `oauth2_client` VALUES (1,'labbook-FE','','LabBook Front-End',0,'/oauth/callback /sigl/oauth/callback','','authorization_code','code','client_secret_post','Y','2026-01-28 17:06:28','2026-01-28 17:06:28'),(2,'labbook-API','','Swagger UI',0,'/static/vendor/swagger-ui/oauth2-redirect.html /sigl/static/vendor/swagger-ui/oauth2-redirect.html','external/analysis external/patient external/record external/result external/user','authorization_code','code','none','Y','2026-01-28 17:06:28','2026-01-28 17:06:28'),(3,'OH2-API','d3f0ab40d2bf9a2ec4fa8a01b622a3d8290234be4b5839e9b34f515a9125c45d','Open Hospital API',0,'/oh2/callback /oh2/oauth/callback','','client_credentials','code','client_secret_post','Y','2026-01-28 17:06:28','2026-01-28 17:06:28');
+INSERT INTO `oauth2_client` VALUES (1,'labbook-FE','','LabBook Front-End',0,'/oauth/callback /sigl/oauth/callback','','authorization_code','code','client_secret_post','Y','2026-01-28 17:06:28','2026-01-28 17:06:28'),(2,'labbook-API','','Swagger UI',0,'/static/vendor/swagger-ui/oauth2-redirect.html /sigl/static/vendor/swagger-ui/oauth2-redirect.html','external/analysis external/patient external/record external/result external/user','authorization_code','code','none','Y','2026-01-28 17:06:28','2026-01-28 17:06:28'),(3,'OH2-API','d3f0ab40d2bf9a2ec4fa8a01b622a3d8290234be4b5839e9b34f515a9125c45d','Open Hospital API',0,'/oh2/callback /oh2/oauth/callback','','client_credentials','code','client_secret_post','Y','2026-01-28 17:06:28','2026-01-28 17:06:28'),(4,'BPHT-API','a3f0ab40d2bf9a2ec4fa8a01b622a3d8290234be4b5839e9b34f515a9125c45a','Blue Pearl BPHT / eLab Machine Connect',0,'','external/bluepearl','client_credentials','code','client_secret_post','Y','2026-01-28 17:06:28','2026-01-28 17:06:28');
 /*!40000 ALTER TABLE `oauth2_client` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `bluepearl_ack`
+--
+
+DROP TABLE IF EXISTS `bluepearl_ack`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `bluepearl_ack` (
+  `bpa_ser` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `bpa_barcode` varchar(50) NOT NULL COMMENT 'Sample barcode (maps to sigl_01_data.code)',
+  `bpa_id_samp` int(10) unsigned NOT NULL DEFAULT 0 COMMENT 'FK → sigl_01_data.id_data',
+  `bpa_sent` tinyint(1) NOT NULL DEFAULT 0 COMMENT '0=pending, 1=acknowledged by BPHT',
+  `bpa_sent_date` datetime DEFAULT NULL COMMENT 'Date when first sent to BPHT via GET',
+  `bpa_ack_date` datetime DEFAULT NULL COMMENT 'Date when BPHT acknowledged receipt',
+  `bpa_created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`bpa_ser`),
+  UNIQUE KEY `uq_bpa_barcode` (`bpa_barcode`),
+  KEY `idx_bpa_samp` (`bpa_id_samp`),
+  KEY `idx_bpa_sent` (`bpa_sent`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci COMMENT='Tracks order acknowledgment status between LabBook and BPHT';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `bluepearl_ack`
+--
+
+LOCK TABLES `bluepearl_ack` WRITE;
+/*!40000 ALTER TABLE `bluepearl_ack` DISABLE KEYS */;
+/*!40000 ALTER TABLE `bluepearl_ack` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `bluepearl_map`
+--
+
+DROP TABLE IF EXISTS `bluepearl_map`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `bluepearl_map` (
+  `bpm_ser` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `bpm_machinename` varchar(120) NOT NULL DEFAULT '' COMMENT 'Machine identifier in BPHT / eLab',
+  `bpm_test_id` int(11) NOT NULL COMMENT 'testId from BPHT',
+  `bpm_test_name` varchar(200) NOT NULL DEFAULT '' COMMENT 'testname label from BPHT',
+  `bpm_param_id` int(11) NOT NULL COMMENT 'ParameterId from BPHT',
+  `bpm_param_name` varchar(200) NOT NULL DEFAULT '' COMMENT 'Parametername label from BPHT',
+  `bpm_ana_id` int(10) unsigned DEFAULT NULL COMMENT 'FK → sigl_05_data.id_data (analysis ref)',
+  `bpm_var_id` int(10) unsigned DEFAULT NULL COMMENT 'FK → sigl_07_data.id_data (variable ref)',
+  `bpm_ana_code` varchar(10) DEFAULT NULL COMMENT 'Cached ana code for quick lookup',
+  `bpm_var_code` varchar(10) DEFAULT NULL COMMENT 'Cached var code_var for quick lookup',
+  `bpm_active` varchar(1) NOT NULL DEFAULT 'Y',
+  `bpm_created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `bpm_updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`bpm_ser`),
+  UNIQUE KEY `uq_bpm_machine_test_param` (`bpm_machinename`,`bpm_test_id`,`bpm_param_id`),
+  KEY `idx_bpm_ana` (`bpm_ana_id`),
+  KEY `idx_bpm_var` (`bpm_var_id`),
+  KEY `idx_bpm_test` (`bpm_test_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci COMMENT='Mapping between BPHT/eLab test/parameter identifiers and LabBook analysis/variable';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `bluepearl_map`
+--
+
+LOCK TABLES `bluepearl_map` WRITE;
+/*!40000 ALTER TABLE `bluepearl_map` DISABLE KEYS */;
+/*!40000 ALTER TABLE `bluepearl_map` ENABLE KEYS */;
+UNLOCK TABLES;
+
 
 --
 -- Table structure for table `oauth2_code`
