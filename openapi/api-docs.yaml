@@ -4259,6 +4259,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+    post:
+      summary: Insert or update patient details
+      parameters:
+        - name: idPat
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientDetRequest'
+      responses:
+        '200':
+          description: Patient inserted or updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - OAuth2: []
   /services/patient/form/item/{idPat}:
     get:
       summary: Get patient form items
@@ -5390,9 +5425,7 @@ paths:
                 $ref: '#/components/schemas/Error'
   /services/result/create/{idRec}:
     post:
-      summary: Create result
-      security:
-        - oauth2: []
+      summary: Create result for record
       parameters:
         - name: idRec
           in: path
@@ -5404,20 +5437,28 @@ paths:
         content:
           application/json:
             schema:
-              type: object
+              $ref: '#/components/schemas/ResultCreate'
       responses:
-        200:
-          description: Success
+        '200':
+          description: Result created successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
-        500:
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
           description: Internal server error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+      security:
+        - OAuth2: []
   /services/result/history/{idRes}:
     get:
       summary: Get result history
@@ -7287,7 +7328,7 @@ paths:
                 items:
                   type: object
         500:
-          description: Internal server error
+          descr iption: Internal server error
           content:
             application/json:
               schema:
@@ -7302,6 +7343,137 @@ components:
     Success:
       type: object
       additionalProperties: true
+    PatientDetRequest:
+      type: object
+      required:
+        - id_user
+      properties:
+        id_user:
+          type: integer
+          description: User ID creating/updating the patient
+        pat_ano:
+          type: integer
+          description: Anonymity level
+          default: 5
+        pat_code:
+          type: string
+          description: Patient code
+        pat_code_lab:
+          type: string
+          description: Lab patient code
+          default: ""
+        pat_name:
+          type: string
+          description: Patient last name
+          default: ""
+        pat_firstname:
+          type: string
+          description: Patient first name
+          default: ""
+        pat_birth:
+          type: string
+          format: date
+          description: Patient birth date (ISO date format)
+        pat_sex:
+          type: integer
+          description: Patient sex (1=Male, 2=Female, 3=Unknown)
+          default: 3
+        pat_address:
+          type: string
+          description: Patient address
+          default: ""
+        pat_zipcode:
+          type: string
+          description: Patient zip code
+          default: ""
+        pat_city:
+          type: string
+          description: Patient city
+          default: ""
+        pat_phone1:
+          type: string
+          description: Patient primary phone
+          default: ""
+        pat_phone2:
+          type: string
+          description: Patient secondary phone
+          default: ""
+        pat_profession:
+          type: string
+          description: Patient profession
+          default: ""
+        pat_maiden:
+          type: string
+          description: Patient maiden name
+          default: ""
+        pat_district:
+          type: string
+          description: Patient district
+          default: ""
+        pat_pbox:
+          type: string
+          description: Patient post box
+          default: ""
+        pat_birth_approx:
+          type: integer
+          description: Birth date approximation (4=Yes, 5=No)
+          default: 5
+        pat_age:
+          type: integer
+          description: Patient age
+          default: 0
+        pat_age_unit:
+          type: integer
+          description: Age unit
+          default: 0
+        pat_midname:
+          type: string
+          description: Patient middle name
+          default: ""
+        pat_nationality:
+          type: integer
+          description: Patient nationality
+          default: 0
+        pat_resident:
+          type: string
+          description: Patient resident status
+          default: "Y"
+        pat_blood_group:
+          type: integer
+          description: Blood group
+          default: 0
+        pat_blood_rhesus:
+          type: integer
+          description: Blood rhesus
+          default: 0
+        pat_email:
+          type: string
+          description: Patient email
+          default: ""
+        pat_agreement:
+          type: string
+          description: Patient agreement
+          default: "N"
+    ResultCreate:
+      type: object
+      required:
+        - id_owner
+        - user_role
+      properties:
+        id_owner:
+          type: integer
+          description: The ID of the user creating the results
+        user_role:
+          type: string
+          description: The role of the user
+        list_ref:
+          type: array
+          items:
+            type: object
+            properties:
+              ref_analyse:
+                type: integer
+                description: Reference to the analysis
   securitySchemes:
     oauth2:
       type: oauth2

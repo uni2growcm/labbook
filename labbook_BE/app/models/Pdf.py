@@ -303,9 +303,30 @@ class Pdf:
 
         """
 
+        path = Pdf.generatePdfReportGrouped(filename, l_id_rec)
+
+        return True if path else False
+
+    @staticmethod
+    def generatePdfReportGrouped(filename, l_id_rec):
+        """Build a Grouped PDF Report
+
+        This function is call by biological-validationin group mode
+
+        Args:
+            l_id_rec   (array): list of id of record.
+            filename  (string): filename.
+
+        Returns:
+            string: The generated PDF file path.
+
+        """
+
         path = Constants.cst_path_tmp
 
         l_file_rec = []
+
+        generated_file_path = ""
 
         for id_rec in l_id_rec:
             report = File.getFileReport(id_rec)
@@ -332,13 +353,14 @@ class Pdf:
                 filepath = os.path.join(path, filename)
 
                 pdf.save(filepath)
+                generated_file_path = filepath
             except Exception as err:
                 Pdf.log.error(Logs.fileline() + ' : getPdfReportGrouped failed, err=%s', err)
-                return False
+                return None
         else:
-            return False
+            return None
 
-        return True
+        return generated_file_path
 
     @staticmethod
     def getPdfReportGlobal(filename, exclu, date_beg, date_end):
@@ -3257,14 +3279,14 @@ class Pdf:
 
         # === ANALYZES details ===
         data['l_data'] = []
-        analysis       = {"ana_name": "", "ana_code": "", "ana_loinc": "", "ana_outsourced": "", "ana_price": '0.00'}
+        analysis       = {"ana_name": "", "ana_code": "", "ana_loinc": "", "ana_outsourced": "", "ana_price": '0.00', "ana_var": ""}
 
         if id_rec > 0:
             # GET all analysis for a record
             list_ana = Analysis.getAnalysisInvoice(id_rec, 'Y')
 
             for ana in list_ana:
-                tmp_ana = {"ana_name": "", "ana_code": "", "ana_loinc": "", "ana_outsourced": "", "ana_price": '0.00'}
+                tmp_ana = {"ana_name": "", "ana_code": "", "ana_loinc": "", "ana_outsourced": "", "ana_price": '0.00', "ana_var": ""}
 
                 # ==== ANALYSIS NAME ====
                 if ana['ana_name']:
@@ -3296,6 +3318,9 @@ class Pdf:
                 else:
                     tmp_ana['ana_price'] = '0.00'
 
+                if ana['ana_var']:
+                    tmp_ana['ana_var'] = ana['ana_var']
+                
                 data['l_data'].append(tmp_ana)
 
         # For print test analysis
@@ -3307,6 +3332,7 @@ class Pdf:
             analysis['ana_loinc'] = "93923-1"
             analysis['ana_outsourced'] = _("Sous-traitée")
             analysis['ana_price'] = "3500.00"
+            analysis['ana_var'] = _("Variable 1") + "\n" + _("Variable 2") + "\n" + _("Variable 3")
 
             data['l_data'].append(analysis)
 

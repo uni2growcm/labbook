@@ -45,6 +45,7 @@ from app.services.ReportRest import *
 from app.services.ResultRest import *
 from app.services.SettingRest import *
 from app.services.LiteRest import *
+from app.services.BluePearlRest import *
 
 LANGUAGES = {
     'fr_FR': 'French',
@@ -192,6 +193,11 @@ def index():
 # ######################################
 
 api.add_resource(Test,                  '/services/test')
+api.add_resource(BluePearlOrdersApi,    '/services/external/bluepearl/orders')
+api.add_resource(BluePearlAckApi,       '/services/external/bluepearl/orders/ack')
+api.add_resource(BluePearlResultsApi,   '/services/external/bluepearl/results')
+api.add_resource(BluePearlMappingApi,   '/services/external/bluepearl/mapping', '/services/external/bluepearl/mapping/<int:bpm_ser>')
+api.add_resource(BluePearlExportApi,    '/services/external/bluepearl/export/nomenclature')
 api.add_resource(AnalysisCode,          '/services/analysis/code/check/<string:code>')
 api.add_resource(AnalysisCodeFromExt,   '/services/external/analysis/code/check/<string:code>')
 api.add_resource(AnalysisDet,           '/services/analysis/det/<int:id_ana>')
@@ -325,6 +331,7 @@ api.add_resource(PdfReport,             '/services/pdf/report/<int:id_rec>/<stri
 api.add_resource(PdfActivityReport,     '/services/pdf/activity/report')
 api.add_resource(PdfReportGeneric,      '/services/pdf/report/generic')
 api.add_resource(PdfReportGrouped,      '/services/pdf/report/grouped')
+api.add_resource(PdfReportGroupedDownload,      '/services/pdf/report/grouped/download')
 api.add_resource(PdfReportGlobal,       '/services/pdf/report/global')
 api.add_resource(PdfReportToday,        '/services/pdf/report/today')
 api.add_resource(PdfSticker,            '/services/pdf/sticker/<string:template>')
